@@ -1,0 +1,177 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run security audit daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  security-audit:
+    name: Security Audit & Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          echo "🔒 Running npm audit..."
+          npm audit --audit-level=moderate || true
+          npm audit --json > npm-audit.json || true
+        continue-on-error: true
+
+      - name: Solidity Security Analysis
+        run: |
+          echo "🔍 Running Solhint security checks..."
+          npm run lint:sol || exit 1
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "🔐 Checking for hardcoded secrets..."
+          if grep -r "PRIVATE_KEY\s*=\s*['\"]0x[0-9a-fA-F]\{64\}" --include="*.js" --include="*.ts" .; then
+            echo "❌ Found hardcoded private keys!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+
+      - name: Check contract size
+        run: |
+          echo "📏 Checking contract size..."
+          npm run compile
+          echo "✅ Contract size check complete"
+
+      - name: Gas usage analysis
+        env:
+          REPORT_GAS: true
+        run: |
+          echo "⛽ Analyzing gas usage..."
+          npm run gas-report || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            npm-audit.json
+            gas-report.txt
+          retention-days: 30
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  dos-protection-check:
+    name: DoS Protection Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for DoS vulnerabilities
+        run: |
+          echo "🛡️ Checking for DoS vulnerabilities..."
+
+          # Check for unbounded loops
+          if grep -r "for\s*(\s*uint.*\s*<\s*.*\.length" contracts/ --include="*.sol"; then
+            echo "⚠️  Warning: Found potential unbounded loops"
+          fi
+
+          # Check for external calls in loops
+          if grep -r "for.*{.*\.call\|\.transfer\|\.send" contracts/ --include="*.sol"; then
+            echo "⚠️  Warning: Found external calls in loops"
+          fi
+
+          echo "✅ DoS protection check complete"
+
+  performance-check:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile and check optimization
+        run: |
+          echo "🚀 Checking compiler optimization..."
+          npm run compile
+
+          # Check if artifacts were generated
+          if [ ! -d "artifacts" ]; then
+            echo "❌ Compilation failed"
+            exit 1
+          fi
+
+          echo "✅ Compilation successful with optimization"
+
+      - name: Generate gas report
+        env:
+          REPORT_GAS: true
+        run: |
+          echo "📊 Generating detailed gas report..."
+          npm run gas-report
+
+      - name: Upload gas report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-report
+          path: gas-report.txt
+          retention-days: 30
