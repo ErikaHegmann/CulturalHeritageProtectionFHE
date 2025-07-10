@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push hooks..."
+
+# Run tests
+echo "🧪 Running tests..."
+npm test || exit 1
+
+# Check gas usage
+if [ "$REPORT_GAS" = "true" ]; then
+    echo "⛽ Generating gas report..."
+    npm run gas-report
+fi
+
+echo "✅ Pre-push checks passed!"
