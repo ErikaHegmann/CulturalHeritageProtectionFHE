@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cultural Heritage Protection</title>
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #2a5298;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(30, 60, 114, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .artifact-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s;
+        }
+
+        .artifact-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-color: #2a5298;
+        }
+
+        .artifact-category {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .connect-btn {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .connect-btn:hover {
+            background: #1e3c72;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2a5298;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <span id="statusText">Disconnected</span>
+        <button class="connect-btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Cultural Heritage Protection</h1>
+            <p>Secure and private management of cultural artifacts using Fully Homomorphic Encryption</p>
+        </div>
+
+        <div class="main-content">
+            <div class="section">
+                <h2>📝 Register New Artifact</h2>
+                <div class="form-group">
+                    <label for="artifactId">Artifact ID:</label>
+                    <input type="number" id="artifactId" placeholder="Enter unique artifact identifier" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="artifactValue">Estimated Value (ETH):</label>
+                    <input type="number" id="artifactValue" placeholder="Enter estimated value" min="0" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label for="artifactAge">Age (Years):</label>
+                    <input type="number" id="artifactAge" placeholder="Enter artifact age" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="isAuthentic">Authenticity Status:</label>
+                    <select id="isAuthentic">
+                        <option value="true">Authentic</option>
+                        <option value="false">Unverified</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category:</label>
+                    <select id="category">
+                        <option value="Painting">Painting</option>
+                        <option value="Sculpture">Sculpture</option>
+                        <option value="Manuscript">Manuscript</option>
+                        <option value="Pottery">Pottery</option>
+                        <option value="Jewelry">Jewelry</option>
+                        <option value="Textile">Textile</option>
+                        <option value="Archaeological">Archaeological</option>
+                        <option value="Religious">Religious</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="registerArtifact()">Register Artifact</button>
+            </div>
+
+            <div class="section">
+                <h2>🔐 Access Management</h2>
+                <div class="form-group">
+                    <label for="accessArtifactIndex">Artifact Index:</label>
+                    <input type="number" id="accessArtifactIndex" placeholder="Enter artifact index" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="viewerAddress">Viewer Address:</label>
+                    <input type="text" id="viewerAddress" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="accessPurpose">Access Purpose:</label>
+                    <input type="text" id="accessPurpose" placeholder="Research, Exhibition, Restoration, etc.">
+                </div>
+                <button class="btn" onclick="grantAccess()">Grant Access</button>
+                <button class="btn" onclick="revokeAccess()">Revoke Access</button>
+                <button class="btn" onclick="checkAccess()">Check Access</button>
+            </div>
+
+            <div class="section">
+                <h2>👨‍🔬 Expert Certification</h2>
+                <div class="form-group">
+                    <label for="expertAddress">Expert Address:</label>
+                    <input type="text" id="expertAddress" placeholder="0x...">
+                </div>
+                <button class="btn" onclick="certifyExpert(true)">Certify Expert</button>
+                <button class="btn" onclick="certifyExpert(false)">Revoke Certification</button>
+            </div>
+
+            <div class="section">
+                <h2>📊 Artifacts Overview</h2>
+                <button class="btn" onclick="loadArtifacts()">Load Artifacts</button>
+                <button class="btn" onclick="getTotalArtifacts()">Get Total Count</button>
+
+                <div class="loading" id="loadingArtifacts">
+                    <div class="spinner"></div>
+                    <p>Loading artifacts...</p>
+                </div>
+
+                <div id="artifactsContainer" class="grid" style="margin-top: 20px;">
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔍 Artifact Details</h2>
+                <div class="form-group">
+                    <label for="detailArtifactIndex">Artifact Index:</label>
+                    <input type="number" id="detailArtifactIndex" placeholder="Enter artifact index" min="0">
+                </div>
+                <button class="btn" onclick="getArtifactDetails()">Get Details</button>
+                <button class="btn" onclick="getAccessHistory()">View Access History</button>
+                <button class="btn" onclick="verifyAuthenticity()">Verify Authenticity</button>
+            </div>
+
+            <div id="statusMessages"></div>
+        </div>
+    </div>
+
+    <script>
+        let provider;
+        let signer;
+        let contract;
+
+        const CONTRACT_ADDRESS = "0xC8B9Aea25D0e8eF57f43552dF30769D53F947b36";
+        const CONTRACT_ABI = [
+            "function registerArtifact(uint32 _id, uint64 _value, uint32 _age, bool _isAuthentic, string memory _category) external",
+            "function grantAccess(uint32 _artifactIndex, address _viewer, string memory _purpose) external",
+            "function revokeAccess(uint32 _artifactIndex, address _viewer) external",
+            "function certifyExpert(address _expert, bool _certified) external",
+            "function getArtifactInfo(uint32 _artifactIndex) external view returns (bool, address, uint256, string memory)",
+            "function getAccessHistory(uint32 _artifactIndex) external view returns (address[], uint256[], string[], bool[])",
+            "function isAuthorizedViewer(uint32 _artifactIndex, address _viewer) external view returns (bool)",
+            "function getTotalArtifacts() external view returns (uint32)",
+            "function verifyAuthenticity(uint32 _artifactIndex) external",
+            "event ArtifactRegistered(uint32 indexed artifactIndex, address indexed owner, string category)",
+            "event AccessGranted(uint32 indexed artifactIndex, address indexed viewer, string purpose)",
+            "event AccessRevoked(uint32 indexed artifactIndex, address indexed viewer)",
+            "event AuthenticityVerified(uint32 indexed artifactIndex, bool authentic)",
+            "event ExpertCertified(address indexed expert, bool certified)"
+        ];
+
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum !== 'undefined') {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                    updateConnectionStatus(true);
+                    showStatus('Wallet connected successfully!', 'success');
+
+                    window.ethereum.on('accountsChanged', handleAccountsChanged);
+                    window.ethereum.on('chainChanged', handleChainChanged);
+                } else {
+                    showStatus('Please install MetaMask to use this application.', 'error');
+                }
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                showStatus('Failed to connect wallet: ' + error.message, 'error');
+            }
+        }
+
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                updateConnectionStatus(false);
+                showStatus('Please connect your wallet.', 'error');
+            } else {
+                connectWallet();
+            }
+        }
+
+        function handleChainChanged() {
+            window.location.reload();
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+
+            if (connected) {
+                statusElement.className = 'connection-status connected';
+                statusText.textContent = 'Connected';
+                connectBtn.style.display = 'none';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                statusText.textContent = 'Disconnected';
+                connectBtn.style.display = 'inline-block';
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusContainer = document.getElementById('statusMessages');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+
+            statusContainer.appendChild(statusDiv);
+
+            setTimeout(() => {
+                statusContainer.removeChild(statusDiv);
+            }, 5000);
+        }
+
+        async function registerArtifact() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const id = document.getElementById('artifactId').value;
+                const value = ethers.utils.parseEther(document.getElementById('artifactValue').value || '0');
+                const age = document.getElementById('artifactAge').value;
+                const authentic = document.getElementById('isAuthentic').value === 'true';
+                const category = document.getElementById('category').value;
+
+                if (!id || !age || !category) {
+                    showStatus('Please fill in all required fields.', 'error');
+                    return;
+                }
+
+                showStatus('Registering artifact...', 'info');
+
+                const tx = await contract.registerArtifact(
+                    parseInt(id),
+                    value,
+                    parseInt(age),
+                    authentic,
+                    category
+                );
+
+                await tx.wait();
+                showStatus('Artifact registered successfully!', 'success');
+
+                document.getElementById('artifactId').value = '';
+                document.getElementById('artifactValue').value = '';
+                document.getElementById('artifactAge').value = '';
+                document.getElementById('isAuthentic').value = 'true';
+                document.getElementById('category').value = 'Painting';
+
+            } catch (error) {
+                console.error('Error registering artifact:', error);
+                showStatus('Failed to register artifact: ' + error.message, 'error');
+            }
+        }
+
+        async function grantAccess() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('accessArtifactIndex').value;
+                const viewer = document.getElementById('viewerAddress').value;
+                const purpose = document.getElementById('accessPurpose').value;
+
+                if (!artifactIndex || !viewer || !purpose) {
+                    showStatus('Please fill in all fields.', 'error');
+                    return;
+                }
+
+                showStatus('Granting access...', 'info');
+
+                const tx = await contract.grantAccess(
+                    parseInt(artifactIndex),
+                    viewer,
+                    purpose
+                );
+
+                await tx.wait();
+                showStatus('Access granted successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error granting access:', error);
+                showStatus('Failed to grant access: ' + error.message, 'error');
+            }
+        }
+
+        async function revokeAccess() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('accessArtifactIndex').value;
+                const viewer = document.getElementById('viewerAddress').value;
+
+                if (!artifactIndex || !viewer) {
+                    showStatus('Please enter artifact index and viewer address.', 'error');
+                    return;
+                }
+
+                showStatus('Revoking access...', 'info');
+
+                const tx = await contract.revokeAccess(
+                    parseInt(artifactIndex),
+                    viewer
+                );
+
+                await tx.wait();
+                showStatus('Access revoked successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error revoking access:', error);
+                showStatus('Failed to revoke access: ' + error.message, 'error');
+            }
+        }
+
+        async function checkAccess() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('accessArtifactIndex').value;
+                const viewer = document.getElementById('viewerAddress').value;
+
+                if (!artifactIndex || !viewer) {
+                    showStatus('Please enter artifact index and viewer address.', 'error');
+                    return;
+                }
+
+                const hasAccess = await contract.isAuthorizedViewer(
+                    parseInt(artifactIndex),
+                    viewer
+                );
+
+                showStatus(
+                    `Access status: ${hasAccess ? 'AUTHORIZED' : 'NOT AUTHORIZED'}`,
+                    hasAccess ? 'success' : 'error'
+                );
+
+            } catch (error) {
+                console.error('Error checking access:', error);
+                showStatus('Failed to check access: ' + error.message, 'error');
+            }
+        }
+
+        async function certifyExpert(certified) {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const expertAddress = document.getElementById('expertAddress').value;
+
+                if (!expertAddress) {
+                    showStatus('Please enter expert address.', 'error');
+                    return;
+                }
+
+                showStatus(`${certified ? 'Certifying' : 'Revoking certification for'} expert...`, 'info');
+
+                const tx = await contract.certifyExpert(expertAddress, certified);
+
+                await tx.wait();
+                showStatus(`Expert ${certified ? 'certified' : 'certification revoked'} successfully!`, 'success');
+
+            } catch (error) {
+                console.error('Error managing expert certification:', error);
+                showStatus('Failed to manage expert certification: ' + error.message, 'error');
+            }
+        }
+
+        async function getTotalArtifacts() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const total = await contract.getTotalArtifacts();
+                showStatus(`Total artifacts registered: ${total.toString()}`, 'info');
+
+            } catch (error) {
+                console.error('Error getting total artifacts:', error);
+                showStatus('Failed to get total artifacts: ' + error.message, 'error');
+            }
+        }
+
+        async function getArtifactDetails() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('detailArtifactIndex').value;
+
+                if (!artifactIndex) {
+                    showStatus('Please enter artifact index.', 'error');
+                    return;
+                }
+
+                const details = await contract.getArtifactInfo(parseInt(artifactIndex));
+
+                const [isActive, owner, timestamp, category] = details;
+                const date = new Date(timestamp * 1000).toLocaleString();
+
+                showStatus(
+                    `Artifact Details:\nStatus: ${isActive ? 'Active' : 'Inactive'}\nOwner: ${owner}\nRegistered: ${date}\nCategory: ${category}`,
+                    'info'
+                );
+
+            } catch (error) {
+                console.error('Error getting artifact details:', error);
+                showStatus('Failed to get artifact details: ' + error.message, 'error');
+            }
+        }
+
+        async function getAccessHistory() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('detailArtifactIndex').value;
+
+                if (!artifactIndex) {
+                    showStatus('Please enter artifact index.', 'error');
+                    return;
+                }
+
+                const history = await contract.getAccessHistory(parseInt(artifactIndex));
+                const [accessors, accessTimes, purposes, approvals] = history;
+
+                if (accessors.length === 0) {
+                    showStatus('No access history found for this artifact.', 'info');
+                    return;
+                }
+
+                let historyText = 'Access History:\n';
+                for (let i = 0; i < accessors.length; i++) {
+                    const date = new Date(accessTimes[i] * 1000).toLocaleString();
+                    historyText += `\n${i + 1}. ${accessors[i]}\n   Purpose: ${purposes[i]}\n   Time: ${date}\n   Status: ${approvals[i] ? 'Approved' : 'Denied'}`;
+                }
+
+                showStatus(historyText, 'info');
+
+            } catch (error) {
+                console.error('Error getting access history:', error);
+                showStatus('Failed to get access history: ' + error.message, 'error');
+            }
+        }
+
+        async function verifyAuthenticity() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                const artifactIndex = document.getElementById('detailArtifactIndex').value;
+
+                if (!artifactIndex) {
+                    showStatus('Please enter artifact index.', 'error');
+                    return;
+                }
+
+                showStatus('Initiating authenticity verification...', 'info');
+
+                const tx = await contract.verifyAuthenticity(parseInt(artifactIndex));
+                await tx.wait();
+
+                showStatus('Authenticity verification request submitted. Please wait for the result.', 'success');
+
+            } catch (error) {
+                console.error('Error verifying authenticity:', error);
+                showStatus('Failed to verify authenticity: ' + error.message, 'error');
+            }
+        }
+
+        async function loadArtifacts() {
+            try {
+                if (!contract) {
+                    await connectWallet();
+                }
+
+                document.getElementById('loadingArtifacts').style.display = 'block';
+
+                const total = await contract.getTotalArtifacts();
+                const artifactsContainer = document.getElementById('artifactsContainer');
+                artifactsContainer.innerHTML = '';
+
+                for (let i = 0; i < total; i++) {
+                    try {
+                        const details = await contract.getArtifactInfo(i);
+                        const [isActive, owner, timestamp, category] = details;
+
+                        const artifactCard = document.createElement('div');
+                        artifactCard.className = 'artifact-card';
+
+                        const date = new Date(timestamp * 1000).toLocaleDateString();
+                        const ownerShort = `${owner.substring(0, 6)}...${owner.substring(owner.length - 4)}`;
+
+                        artifactCard.innerHTML = `
+                            <div class="artifact-category">${category}</div>
+                            <h3>Artifact #${i}</h3>
+                            <p><strong>Owner:</strong> ${ownerShort}</p>
+                            <p><strong>Registered:</strong> ${date}</p>
+                            <p><strong>Status:</strong> ${isActive ? '✅ Active' : '❌ Inactive'}</p>
+                            <button class="btn" onclick="document.getElementById('detailArtifactIndex').value = ${i}; document.getElementById('detailArtifactIndex').scrollIntoView();">View Details</button>
+                        `;
+
+                        artifactsContainer.appendChild(artifactCard);
+                    } catch (error) {
+                        console.warn(`Could not load artifact ${i}:`, error);
+                    }
+                }
+
+                document.getElementById('loadingArtifacts').style.display = 'none';
+
+                if (total == 0) {
+                    artifactsContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No artifacts registered yet.</p>';
+                }
+
+            } catch (error) {
+                console.error('Error loading artifacts:', error);
+                showStatus('Failed to load artifacts: ' + error.message, 'error');
+                document.getElementById('loadingArtifacts').style.display = 'none';
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            updateConnectionStatus(false);
+
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        await connectWallet();
+                    }
+                } catch (error) {
+                    console.error('Error checking accounts:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
