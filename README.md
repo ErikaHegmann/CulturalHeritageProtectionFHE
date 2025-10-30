@@ -17,6 +17,8 @@ A blockchain-based platform leveraging **Fully Homomorphic Encryption (FHE)** to
 ## 📑 Table of Contents
 
 - [Project Overview](#-project-overview)
+  - [Why Privacy Matters for Cultural Heritage](#why-privacy-matters-for-cultural-heritage)
+  - [Related Example Applications](#related-example-applications)
 - [Core Concepts](#-core-concepts)
 - [Features](#-features)
 - [Quick Start](#-quick-start)
@@ -53,6 +55,53 @@ Cultural heritage artifacts often require confidential handling:
 - **Authenticity**: Confidential authentication processes
 - **Market Sensitivity**: Private appraisals and valuations
 - **Legal Protection**: Confidential legal and insurance documentation
+
+### Related Example Applications
+
+This repository includes multiple implementations demonstrating FHE technology in different contexts:
+
+#### 🔒 Privacy Quality Inspection System
+**Location**: `./quality-testing-app/`
+
+A privacy-preserving quality inspection platform built with React and the Universal FHEVM SDK, demonstrating FHE applications in manufacturing and quality control:
+
+- **Technology**: React 18 + Vite + TypeScript + @fhevm/sdk
+- **Use Case**: Anonymous quality testing with encrypted inspection data
+- **Features**:
+  - Encrypted quality scores (0-100) using `euint8`
+  - Anonymous defect count tracking using `euint8`
+  - Confidential batch number identification using `euint32`
+  - Role-based inspector authorization system
+  - Multi-category support (Electronics, Automotive, Pharmaceutical, etc.)
+  - Real-time blockchain verification
+
+**Contract**: `0xB867082d753197aeAf0E3523FE993Eae79F45342` on Sepolia
+
+**Setup**:
+```bash
+cd quality-testing-app
+npm install
+npm run dev
+```
+
+**Key SDK Integration**:
+```typescript
+import { useFhevm, useEncrypt } from '@fhevm/sdk/react';
+
+const { fhevm, isReady } = useFhevm({
+  network: 'sepolia',
+  contractAddress: CONTRACT_ADDRESS
+});
+
+const { encrypt } = useEncrypt(fhevm);
+
+// Encrypt quality inspection data
+const encryptedScore = await encrypt(qualityScore, 'euint8');
+const encryptedDefects = await encrypt(defectCount, 'euint8');
+const encryptedBatch = await encrypt(batchNumber, 'euint32');
+```
+
+This example showcases how the same FHE technology can be applied across different industries, from cultural heritage protection to manufacturing quality control, demonstrating the versatility and power of privacy-preserving smart contracts.
 
 ---
 
@@ -181,6 +230,31 @@ npm run build
 npm start
 ```
 
+### Running Quality Testing Application
+
+The repository includes an additional example application demonstrating FHE in manufacturing quality control:
+
+```bash
+# Navigate to quality testing app
+cd quality-testing-app
+
+# Install dependencies
+npm install
+
+# Start development server (runs on port 3003)
+npm run dev
+
+# Build for production
+npm run build
+```
+
+The quality testing application demonstrates:
+- React 18 + Vite + TypeScript stack
+- @fhevm/sdk integration with React hooks
+- Encrypted quality scores, defect counts, and batch numbers
+- Inspector authorization and role-based access control
+- Real-time blockchain verification
+
 ---
 
 ## 🏗️ Architecture
@@ -294,13 +368,24 @@ For more details, see [FHE Concepts Documentation](./docs/FHE_CONCEPTS.md).
 
 ## 🛠 Tech Stack
 
-### Frontend
+### Frontend Implementations
+
+#### Cultural Heritage Protection (Main Application)
 - **Framework**: Next.js 14 (App Router)
 - **UI Library**: React 18
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
 - **Build Tool**: Webpack/Turbopack
+
+#### Privacy Quality Inspection System
+- **Framework**: React 18 (Standalone)
+- **Build Tool**: Vite 5
+- **Language**: TypeScript
+- **SDK Integration**: @fhevm/sdk (Universal FHEVM SDK)
+- **Styling**: Custom CSS with responsive design
+- **State Management**: React Hooks (useState, useEffect)
+- **Components**: Modular React components with TypeScript
 
 ### Blockchain
 - **Smart Contracts**: Solidity 0.8.24
@@ -311,6 +396,7 @@ For more details, see [FHE Concepts Documentation](./docs/FHE_CONCEPTS.md).
 
 ### FHE Infrastructure
 - **Encryption**: Zama fhevmjs (client-side)
+- **SDK**: @fhevm/sdk (Universal FHEVM SDK with React hooks)
 - **Coprocessor**: Zama FHE Coprocessor
 - **Gateway**: Zama Gateway Service
 - **ACL**: Access Control List Contract
@@ -427,8 +513,8 @@ For complete API documentation, see [API Reference](./docs/API_REFERENCE.md).
 ### Project Structure
 
 ```
-CulturalHeritageProtection/
-├── app/                    # Next.js app directory
+D:\
+├── app/                    # Next.js app directory (Cultural Heritage)
 │   ├── page.tsx           # Main application page
 │   ├── layout.tsx         # Root layout
 │   └── globals.css        # Global styles
@@ -437,7 +523,24 @@ CulturalHeritageProtection/
 │   ├── EncryptionPanel.tsx
 │   └── DecryptionPanel.tsx
 ├── contracts/             # Smart contracts
-│   └── CulturalHeritageProtection.sol
+│   ├── CulturalHeritageProtection.sol
+│   └── PrivacyQualityInspection.sol
+├── quality-testing-app/   # Privacy Quality Inspection System
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── InspectorAuthorization.tsx
+│   │   │   ├── QualityInspection.tsx
+│   │   │   └── InspectionVerification.tsx
+│   │   ├── App.tsx        # Main React app
+│   │   ├── main.tsx       # Entry point
+│   │   └── styles.css     # Custom styling
+│   ├── package.json       # Dependencies (React + Vite + @fhevm/sdk)
+│   ├── vite.config.ts     # Vite configuration
+│   └── README.md          # Quality testing documentation
+├── fhevm-react-template/  # Universal FHEVM SDK repository
+│   ├── packages/
+│   │   └── fhevm-sdk/     # @fhevm/sdk package
+│   └── examples/          # Additional FHE examples
 ├── scripts/               # Deployment scripts
 │   └── deploy.js
 ├── test/                  # Test suites
