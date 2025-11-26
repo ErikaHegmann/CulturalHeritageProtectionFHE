@@ -173,6 +173,75 @@ User Input (Plaintext) → FHE Encryption → Blockchain Storage (Ciphertext)
 - **Granular Permissions**: Fine-grained access control per artifact
 - **Time-Based Access**: Optional time-locked decryption capabilities
 
+### 🚀 New: Advanced Architecture Features
+
+#### Gateway Callback Pattern
+- **Asynchronous Decryption**: Off-chain Gateway service for secure FHE decryption
+- **Callback Mechanism**: `user submits request → contract records → Gateway decrypts → callback completes transaction`
+- **Cryptographic Verification**: `FHE.checkSignatures()` ensures data integrity and authenticity
+- **Request Tracking**: Complete lifecycle management with unique request IDs
+
+#### Refund & Timeout Protection
+- **Refund Mechanism**: Handles decryption failures gracefully
+  - Partial refund (50%) of registration fee if Gateway timeout occurs
+  - Prevents permanent fund locking in edge cases
+  - One-time refund protection prevents double-claiming
+- **Timeout Protection**: 1-day timeout prevents indefinite pending states
+  - Automatic detection of expired requests
+  - User-initiated refund after timeout period
+  - `getDecryptionStatus()` provides real-time monitoring
+
+#### Innovative Privacy Solutions
+
+1. **Division Protection with Random Multiplier**
+   - Prevents information leakage in FHE division operations
+   - Uses `randomMultiplier` to add privacy noise
+   - Maintains calculation accuracy while protecting sensitive values
+
+2. **Price Obfuscation Technique**
+   - Adds controlled random noise to price data
+   - Prevents exact value extraction from blockchain
+   - Configurable noise range for flexibility
+
+3. **Privacy-Preserving Computations**
+   - Weighted average calculations on encrypted data
+   - Percentage calculations without revealing values
+   - Fuzzy comparison for range checks
+
+#### Security Enhancements
+
+- **Input Validation**: Comprehensive checks on all parameters
+  - `validArtifactIndex` modifier prevents out-of-bounds access
+  - `nonZeroAddress` modifier blocks zero-address attacks
+  - Require statements validate all user inputs
+
+- **Access Control**: Multi-layered permission system
+  - Owner-level permissions for artifact management
+  - Curator-level permissions for platform administration
+  - Expert certification system for authenticity verification
+
+- **Overflow Protection**: Solidity 0.8.24+ built-in safety
+  - Automatic revert on arithmetic overflow/underflow
+  - Safe fee calculations and refund processing
+
+- **Audit Trail**: Complete event logging
+  - `DecryptionRequested`, `DecryptionCompleted`, `DecryptionFailed`
+  - `RefundIssued`, `PlatformFeesWithdrawn`
+  - Full transparency for off-chain monitoring
+
+#### Gas Optimization (HCU Management)
+
+- **HCU-Aware Design**: Optimized for Homomorphic Compute Units
+  - Right-sized encrypted types (`euint8` for small values, `euint64` for large)
+  - Batch permission grants to reduce operations
+  - Minimized FHE operations where possible
+
+- **Cost-Effective Operations**:
+  - Registration: ~500K gas (4 encryptions)
+  - Grant Access: ~200K gas (4 permissions)
+  - Verify Authenticity: ~150K gas (1 decryption request)
+  - Refund Request: ~100K gas (no FHE operations)
+
 ---
 
 ## 🚀 Quick Start
@@ -278,17 +347,18 @@ The quality testing application demonstrates:
                       ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                  Smart Contract Layer                       │
-│  - CulturalHeritageProtection.sol (Solidity + TFHE)        │
+│  - CulturalHeritageProtection.sol (Main Contract)          │
+│  - PrivacyUtils.sol (Utility Library)                       │
 │  - Encrypted data storage on-chain                          │
-│  - Access control logic                                     │
-│  - Role management                                          │
+│  - Access control & Gateway callbacks                       │
+│  - Refund & timeout protection                              │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                  FHE Infrastructure                         │
 │  - Zama FHE Coprocessor (off-chain computation)            │
-│  - Gateway Service (decryption requests)                    │
+│  - Gateway Service (async decryption with callbacks)        │
 │  - ACL Contract (access control list)                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -299,15 +369,34 @@ The quality testing application demonstrates:
 ```
 1. User enters artifact data (plaintext)
 2. Client encrypts data using FHE public key
-3. Transaction submitted to smart contract
+3. Transaction submitted with registration fee (0.01 ETH)
 4. Encrypted data stored on-chain
 5. Event emitted (encrypted)
+```
+
+**Gateway Callback Pattern (Async Decryption):**
+```
+1. User requests decryption (e.g., verifyAuthenticity)
+2. Contract calls FHE.requestDecryption() with callback selector
+3. Decryption request stored with timeout timestamp
+4. Gateway service monitors blockchain for requests
+5. Gateway performs off-chain decryption
+6. Gateway calls back contract with decrypted data + proof
+7. Contract verifies proof via FHE.checkSignatures()
+8. Contract processes result and updates state
+9. Event emitted with results
+
+TIMEOUT PATH (if Gateway fails):
+  → User waits for DECRYPTION_TIMEOUT (1 day)
+  → User calls requestDecryptionRefund()
+  → Contract issues partial refund (50% of fee)
+  → Prevents permanent fund locking
 ```
 
 **Artifact Viewing (Authorized):**
 ```
 1. User requests artifact data
-2. Smart contract checks access permissions
+2. Smart contract checks access permissions via modifiers
 3. If authorized, returns encrypted data
 4. User signs EIP-712 decryption request
 5. Gateway verifies signature and permissions
@@ -315,7 +404,11 @@ The quality testing application demonstrates:
 7. Display to user
 ```
 
-For detailed architecture, see [Architecture Documentation](./docs/ARCHITECTURE.md).
+### Advanced Features Documentation
+
+- **[Advanced Architecture](./docs/ADVANCED_ARCHITECTURE.md)** - Gateway callbacks, refund mechanism, timeout protection
+- **[Privacy Utils Library](./contracts/PrivacyUtils.sol)** - Division protection, price obfuscation, privacy-preserving operations
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete function specifications
 
 ---
 
@@ -644,13 +737,39 @@ For security details, see [SECURITY_AND_PERFORMANCE.md](./SECURITY_AND_PERFORMAN
 
 ### Smart Contract Functions
 
-- `registerArtifact()` - Register new artifact
-- `updateArtifact()` - Update artifact metadata
-- `transferOwnership()` - Transfer to new owner
-- `grantAccess()` - Grant decryption access
-- `revokeAccess()` - Revoke access
-- `getEncryptedArtifact()` - Retrieve encrypted data
-- `checkAccess()` - Verify permissions
+#### Core Functions
+- `registerArtifact(uint32 _id, uint64 _value, uint32 _age, bool _isAuthentic, string _category)` - Register new artifact with encrypted data (requires 0.01 ETH fee)
+- `transferOwnership(uint32 _artifactIndex, address _newOwner)` - Transfer artifact to new owner
+- `grantAccess(uint32 _artifactIndex, address _viewer, string _purpose)` - Grant decryption access with audit trail
+- `revokeAccess(uint32 _artifactIndex, address _viewer)` - Revoke access permissions
+- `getArtifactInfo(uint32 _artifactIndex)` - Retrieve public artifact information
+
+#### Gateway Callback Functions (New)
+- `verifyAuthenticity(uint32 _artifactIndex)` - Request async decryption via Gateway (expert only)
+- `processAuthenticityResult(uint256 requestId, bytes cleartexts, bytes decryptionProof)` - Gateway callback handler
+- `requestDecryptionRefund(uint256 requestId)` - Request refund for timed-out decryption
+- `getDecryptionStatus(uint256 requestId)` - Check request status (processed, refunded, timed out)
+
+#### Admin Functions
+- `certifyExpert(address _expert, bool _certified)` - Certify/revoke expert status (curator only)
+- `withdrawPlatformFees(address payable to)` - Withdraw accumulated fees (curator only)
+- `getPlatformFees()` - View platform fee balance
+
+#### Artifact Management
+- `deactivateArtifact(uint32 _artifactIndex)` - Soft delete artifact
+- `reactivateArtifact(uint32 _artifactIndex)` - Reactivate deactivated artifact
+- `isAuthorizedViewer(uint32 _artifactIndex, address _viewer)` - Check authorization status
+- `getAccessHistory(uint32 _artifactIndex)` - Retrieve complete access audit trail
+
+### Privacy Utils Library Functions
+
+- `safeDivide(euint64 numerator, euint64 denominator, uint64 randomMultiplier)` - Privacy-preserving division
+- `obfuscatePrice(euint64 price, uint32 noiseRange, uint256 noiseSeed)` - Add privacy noise to prices
+- `calculatePercentage(euint64 value, uint32 percentage)` - Encrypted percentage calculation
+- `weightedAverage(euint64 value1, uint32 weight1, euint64 value2, uint32 weight2)` - Encrypted weighted average
+- `generateRandomMultiplier(uint256 seed, uint64 min, uint64 max)` - Generate random multiplier for privacy
+- `clampValue(euint64 value, uint64 minValue, uint64 maxValue)` - Privacy-preserving value clamping
+- `updateEMA(euint64 currentEMA, euint64 newValue, uint32 alpha)` - Exponential moving average on encrypted data
 
 ### Frontend Hooks
 
@@ -703,4 +822,45 @@ For questions or issues:
 
 ---
 
+## 🎯 Key Innovations Summary
+
+This implementation showcases cutting-edge FHE technology with production-ready features:
+
+### Architecture Innovations
+✅ **Gateway Callback Pattern** - Asynchronous decryption with cryptographic verification
+✅ **Refund Mechanism** - Handles decryption failures gracefully, prevents fund locking
+✅ **Timeout Protection** - 1-day timeout with automatic recovery mechanism
+
+### Privacy Innovations
+✅ **Division Protection** - Random multiplier technique prevents information leakage
+✅ **Price Obfuscation** - Controlled noise addition protects sensitive valuations
+✅ **Privacy-Preserving Computations** - Weighted averages, percentages, and fuzzy comparisons on encrypted data
+
+### Security Features
+✅ **Input Validation** - Comprehensive parameter checking with custom modifiers
+✅ **Access Control** - Multi-layered permission system (Owner, Curator, Expert roles)
+✅ **Overflow Protection** - Solidity 0.8.24+ automatic safety
+✅ **Audit Trail** - Complete event logging for transparency and compliance
+
+### Gas Optimization
+✅ **HCU-Aware Design** - Right-sized encrypted types and batched operations
+✅ **Cost-Effective** - Registration ~500K gas, Access grants ~200K gas
+✅ **Minimized FHE Operations** - Strategic use of encryption where needed
+
+### Smart Contract Structure
+```
+contracts/
+├── CulturalHeritageProtection.sol  (537 lines, main contract)
+└── PrivacyUtils.sol                (280+ lines, utility library)
+```
+
+### Documentation
+- **[Advanced Architecture](./docs/ADVANCED_ARCHITECTURE.md)** - Deep dive into Gateway callbacks and privacy techniques
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete function specifications
+- **[Security Audit](./SECURITY_AND_PERFORMANCE.md)** - Security analysis and best practices
+
+---
+
 **Built with ❤️ using Zama FHEVM technology for privacy-preserving cultural heritage protection.**
+
+**Key Technologies**: Solidity 0.8.24 • Zama FHEVM • Gateway Callback Pattern • Privacy-Preserving Operations • Production-Ready Security
